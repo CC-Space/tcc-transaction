@@ -26,6 +26,13 @@ public class PaymentServiceImpl {
     @Autowired
     OrderRepository orderRepository;
 
+    /**
+     * 本业务报错调用 cancelMakePayment，把订单状态设置为支付失败
+     *
+     * @param order
+     * @param redPacketPayAmount
+     * @param capitalPayAmount
+     */
     @Compensable(confirmMethod = "confirmMakePayment", cancelMethod = "cancelMakePayment")
     @Transactional
     public void makePayment(Order order, BigDecimal redPacketPayAmount, BigDecimal capitalPayAmount) {

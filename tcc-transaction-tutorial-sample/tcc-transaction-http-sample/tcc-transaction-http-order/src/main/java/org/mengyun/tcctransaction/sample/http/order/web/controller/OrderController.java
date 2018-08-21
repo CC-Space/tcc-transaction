@@ -81,21 +81,28 @@ public class OrderController {
                                    @RequestParam long shopId,
                                    @RequestParam long payerUserId,
                                    @RequestParam long productId) {
+        //构造订单请求对象
         PlaceOrderRequest request = buildRequest(redPacketPayAmount, shopId, payerUserId, productId);
-        // 下单并支付订单
-        String merchantOrderNo = placeOrderService.placeOrder(request.getPayerUserId(), request.getShopId(),
-                request.getProductQuantities(), request.getRedPacketPayAmount());
-        // 返回
-        ModelAndView mv = new ModelAndView("pay_success");
+
+        // 下单并支付订单 （业务主体体现，分布式事务在这里）（真想不懂老芋为啥封装好了又把他拆开了）
+        String merchantOrderNo = placeOrderService.placeOrder(request);
+
         // 查询订单状态
         String status = orderService.getOrderStatusByMerchantOrderNo(merchantOrderNo);
-        // 支付结果提示
+
+        // 返回支付结果提示
+        return getModelAndView(payerUserId, productId, status);
+    }
+
+    private ModelAndView getModelAndView(@RequestParam long payerUserId, @RequestParam long productId, String status) {
         String payResultTip = null;
         if ("CONFIRMED".equals(status)) {
             payResultTip = "支付成功";
         } else if ("PAY_FAILED".equals(status)) {
             payResultTip = "支付失败";
         }
+
+        ModelAndView mv = new ModelAndView("pay_success");
         mv.addObject("payResult", payResultTip);
         // 商品信息
         mv.addObject("product", productRepository.findById(productId));
@@ -115,6 +122,7 @@ public class OrderController {
         request.setPayerUserId(payerUserId);
         request.setShopId(shopId);
         request.setRedPacketPayAmount(new BigDecimal(redPacketPayAmount));
+        //不可变的ImmutablePair对象,即:左元素不可变、右元素不可变 可以理解为不可变的Map
         request.getProductQuantities().add(new ImmutablePair<Long, Integer>(productId, 1));
         return request;
     }

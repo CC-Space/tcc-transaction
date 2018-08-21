@@ -1,6 +1,5 @@
 package org.mengyun.tcctransaction.sample.http.order.service;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.mengyun.tcctransaction.CancellingException;
 import org.mengyun.tcctransaction.ConfirmingException;
 import org.mengyun.tcctransaction.sample.http.order.domain.entity.Order;
@@ -8,11 +7,9 @@ import org.mengyun.tcctransaction.sample.http.order.domain.entity.Shop;
 import org.mengyun.tcctransaction.sample.http.order.domain.repository.ShopRepository;
 import org.mengyun.tcctransaction.sample.http.order.domain.service.OrderServiceImpl;
 import org.mengyun.tcctransaction.sample.http.order.domain.service.PaymentServiceImpl;
+import org.mengyun.tcctransaction.sample.http.order.web.controller.vo.PlaceOrderRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 /**
  * 支付订单服务实现
@@ -31,15 +28,15 @@ public class PlaceOrderServiceImpl {
     @Autowired
     PaymentServiceImpl paymentService;
 
-    public String placeOrder(long payerUserId, long shopId, List<Pair<Long, Integer>> productQuantities, BigDecimal redPacketPayAmount) {
+    public String placeOrder(PlaceOrderRequest request) {
         // 获取商店
-        Shop shop = shopRepository.findById(shopId);
-        // 创建订单
-        Order order = orderService.createOrder(payerUserId, shop.getOwnerUserId(), productQuantities);
+        Shop shop = shopRepository.findById(request.getShopId());
+        // 创建订单(构造订单对象，插入订单表 【订单状态为草稿】)
+        Order order = orderService.createOrder(request.getPayerUserId(), shop.getOwnerUserId(), request.getProductQuantities());
         // 发起支付
         Boolean result = false;
         try {
-            paymentService.makePayment(order, redPacketPayAmount, order.getTotalAmount().subtract(redPacketPayAmount));
+            paymentService.makePayment(order, request.getRedPacketPayAmount(), order.getTotalAmount().subtract(request.getRedPacketPayAmount()));
         } catch (ConfirmingException confirmingException) {
             // exception throws with the tcc transaction status is CONFIRMING,
             // when tcc transaction is confirming status,
